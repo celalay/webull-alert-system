@@ -14,14 +14,12 @@ from config import (
     GMAIL_RECIPIENT,
     MIN_UPSIDE_FOR_ALERT,
     MA200_PERIOD,
-    MA_1YEAR_PERIOD,
-    MA_3MONTH_PERIOD,
     LOG_LEVEL,
 )
 from watchlist import load_watchlist, validate_tickers
 from data_provider import calculate_moving_averages, get_stock_info
 from calculations import analyze_stock
-from email_service import send_alert_email
+from email_service import send_summary_email
 
 # Configure logging
 logging.basicConfig(
@@ -85,7 +83,7 @@ def run_scan() -> None:
         return
     
     # Analyze each stock
-    alerts_sent = 0
+    alerts = []
     errors_count = 0
     
     for ticker in tickers:
@@ -93,77 +91,81 @@ def run_scan() -> None:
         
         try:
             # Get moving averages and current price
-            data = calculate_moving_averages(
-                ticker=ticker,
-                ma200_period=MA200_PERIOD,
-                ma_1year_period=MA_1YEAR_PERIOD,
-                ma_3month_period=MA_3MONTH_PERIOD,
-            )
+            data = calculate_moving_averages(ticker=ticker, ma200_period=MA200_PERIOD)
             
             if data is None:
                 logger.warning(f"Could not fetch data for {ticker}. Skipping.")
                 errors_count += 1
                 continue
             
-            current_price, ma200, ma_1year, ma_3month = data
+            current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter = data
             
             # Analyze stock
             analysis = analyze_stock(
                 ticker=ticker,
                 current_price=current_price,
+                ma_alltime=ma_alltime,
                 ma200=ma200,
-                ma_1year=ma_1year,
-                ma_3month=ma_3month,
+                ma_last_30_days=ma_last_30_days,
+                ma_last_quarter=ma_last_quarter,
                 min_upside_threshold=MIN_UPSIDE_FOR_ALERT,
             )
             
             # Log analysis results
             logger.info(
                 f"{ticker}: Price=${analysis['current_price']}, "
+                f"All-Time=${analysis['ma_alltime']}, "
                 f"MA200=${analysis['ma200']}, "
+                f"Last 30 Days=${analysis['ma_last_30_days']}, "
+                f"Last Quarter=${analysis['ma_last_quarter']}, "
                 f"Upside={analysis['upside_to_ma200']}%"
             )
             
-            # Send alert if triggered
+            # Collect alert if triggered
             if analysis["alert_triggered"]:
                 logger.info(
                     f"Alert triggered for {ticker}! "
                     f"Level: {analysis['alert_level']}"
                 )
                 
-                # Get company info for email
+                # Get company info
                 stock_info = get_stock_info(ticker)
                 company_name = stock_info.get("longName") if stock_info else None
                 
-                # Send email
-                email_sent = send_alert_email(
-                    sender=GMAIL_SENDER,
-                    app_password=GMAIL_APP_PASSWORD,
-                    recipient=GMAIL_RECIPIENT,
-                    ticker=ticker,
-                    current_price=analysis["current_price"],
-                    ma200=analysis["ma200"],
-                    ma_1year=analysis["ma_1year"],
-                    ma_3month=analysis["ma_3month"],
-                    upside_to_ma200=analysis["upside_to_ma200"],
-                    upside_to_1year=analysis["upside_to_1year"],
-                    upside_to_3month=analysis["upside_to_3month"],
-                    alert_level=analysis["alert_level"],
-                    company_name=company_name,
-                )
-                
-                if email_sent:
-                    alerts_sent += 1
-                else:
-                    logger.error(f"Failed to send email for {ticker}")
-                    errors_count += 1
+                # Add to alerts list
+                alerts.append({
+                    "ticker": ticker,
+                    "company_name": company_name,
+                    "current_price": analysis["current_price"],
+                    "ma_alltime": analysis["ma_alltime"],
+                    "ma200": analysis["ma200"],
+                    "ma_last_30_days": analysis["ma_last_30_days"],
+                    "ma_last_quarter": analysis["ma_last_quarter"],
+                    "upside_to_alltime": analysis["upside_to_alltime"],
+                    "upside_to_ma200": analysis["upside_to_ma200"],
+                    "upside_to_last_30_days": analysis["upside_to_last_30_days"],
+                    "upside_to_last_quarter": analysis["upside_to_last_quarter"],
+                    "alert_level": analysis["alert_level"],
+                })
         
         except Exception as e:
             logger.error(f"Error processing {ticker}: {e}", exc_info=True)
             errors_count += 1
     
+    # Send summary email with all alerts
+    if alerts:
+        email_sent = send_summary_email(
+            sender=GMAIL_SENDER,
+            app_password=GMAIL_APP_PASSWORD,
+            recipient=GMAIL_RECIPIENT,
+            alerts=alerts,
+        )
+        if not email_sent:
+            logger.error("Failed to send summary email")
+            errors_count += 1
+    
     # Summary
-    logger.info(f"Scan complete. Alerts sent: {alerts_sent}, Errors: {errors_count}")
+    logger.info(f"Scan complete. Alerts sent: {len(alerts)}, Errors: {errors_count}")
 
 
 if __name__ == "__main__":

@@ -79,9 +79,10 @@ def should_alert(
 def analyze_stock(
     ticker: str,
     current_price: float,
+    ma_alltime: float,
     ma200: float,
-    ma_1year: float,
-    ma_3month: float,
+    ma_last_30_days: float,
+    ma_last_quarter: float,
     min_upside_threshold: float = 8.0
 ) -> Dict:
     """
@@ -90,27 +91,31 @@ def analyze_stock(
     Args:
         ticker: Stock ticker symbol
         current_price: Current stock price
+        ma_alltime: All-time average price
         ma200: 200-day moving average
-        ma_1year: 1-year average price
-        ma_3month: 3-month average price
+        ma_last_30_days: Last 30 calendar days average price
+        ma_last_quarter: Last completed calendar quarter average price
         min_upside_threshold: Minimum upside for alert
         
     Returns:
         Dictionary with analysis results including:
         - ticker: Stock ticker
         - current_price: Current price
+        - ma_alltime: All-time average
         - ma200: 200-day MA
-        - ma_1year: 1-year average
-        - ma_3month: 3-month average
+        - ma_last_30_days: Last 30 days average
+        - ma_last_quarter: Last quarter average
+        - upside_to_alltime: Upside to all-time average as percentage
         - upside_to_ma200: Upside to MA200 as percentage
-        - upside_to_1year: Upside to 1-year average as percentage
-        - upside_to_3month: Upside to 3-month average as percentage
+        - upside_to_last_month: Upside to last month average as percentage
+        - upside_to_last_quarter: Upside to last quarter average as percentage
         - alert_triggered: Boolean for whether alert should be sent
         - alert_level: Classification of alert level
     """
+    upside_to_alltime = calculate_upside_percentage(current_price, ma_alltime)
     upside_to_ma200 = calculate_upside_percentage(current_price, ma200)
-    upside_to_1year = calculate_upside_percentage(current_price, ma_1year)
-    upside_to_3month = calculate_upside_percentage(current_price, ma_3month)
+    upside_to_last_month = calculate_upside_percentage(current_price, ma_last_30_days)
+    upside_to_last_quarter = calculate_upside_percentage(current_price, ma_last_quarter)
     
     alert_triggered = should_alert(
         current_price, ma200, upside_to_ma200, min_upside_threshold
@@ -120,12 +125,14 @@ def analyze_stock(
     return {
         "ticker": ticker,
         "current_price": round(current_price, 2),
+        "ma_alltime": round(ma_alltime, 2),
         "ma200": round(ma200, 2),
-        "ma_1year": round(ma_1year, 2),
-        "ma_3month": round(ma_3month, 2),
+        "ma_last_30_days": round(ma_last_30_days, 2),
+        "ma_last_quarter": round(ma_last_quarter, 2),
+        "upside_to_alltime": round(upside_to_alltime, 2),
         "upside_to_ma200": round(upside_to_ma200, 2),
-        "upside_to_1year": round(upside_to_1year, 2),
-        "upside_to_3month": round(upside_to_3month, 2),
+        "upside_to_last_30_days": round(upside_to_last_month, 2),
+        "upside_to_last_quarter": round(upside_to_last_quarter, 2),
         "alert_triggered": alert_triggered,
         "alert_level": alert_level,
     }

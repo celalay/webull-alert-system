@@ -145,9 +145,10 @@ class TestStockAnalysis(unittest.TestCase):
         result = analyze_stock(
             ticker="AAPL",
             current_price=90.0,
+            ma_alltime=92.0,
             ma200=100.0,
-            ma_1year=95.0,
-            ma_3month=88.0,
+            ma_last_30_days=94.0,
+            ma_last_quarter=96.0,
             min_upside_threshold=8.0
         )
         
@@ -168,9 +169,10 @@ class TestStockAnalysis(unittest.TestCase):
         result = analyze_stock(
             ticker="MSFT",
             current_price=110.0,
+            ma_alltime=108.0,
             ma200=100.0,
-            ma_1year=105.0,
-            ma_3month=108.0,
+            ma_last_30_days=107.0,
+            ma_last_quarter=109.0,
             min_upside_threshold=8.0
         )
         
@@ -182,14 +184,15 @@ class TestStockAnalysis(unittest.TestCase):
         result = analyze_stock(
             ticker="GOOGL",
             current_price=80.0,
+            ma_alltime=85.0,
             ma200=100.0,
-            ma_1year=95.0,
-            ma_3month=90.0,
+            ma_last_30_days=88.0,
+            ma_last_quarter=89.0,
             min_upside_threshold=8.0
         )
         
         self.assertTrue(result["alert_triggered"])
-        self.assertEqual(result["alert_level"], "deep_discount")
+        self.assertEqual(result["alert_level"], "investigate_carefully")
         self.assertAlmostEqual(result["upside_to_ma200"], 25.0, places=1)
     
     def test_analyze_stock_rounding(self):
@@ -197,17 +200,19 @@ class TestStockAnalysis(unittest.TestCase):
         result = analyze_stock(
             ticker="TSLA",
             current_price=100.123456,
+            ma_alltime=180.234567,
             ma200=200.987654,
-            ma_1year=150.555555,
-            ma_3month=120.111111,
+            ma_last_30_days=140.555555,
+            ma_last_quarter=120.111111,
             min_upside_threshold=8.0
         )
         
         # Verify rounding to 2 decimal places
         self.assertEqual(result["current_price"], 100.12)
+        self.assertEqual(result["ma_alltime"], 180.23)
         self.assertEqual(result["ma200"], 200.99)
-        self.assertEqual(result["ma_1year"], 150.56)
-        self.assertEqual(result["ma_3month"], 120.11)
+        self.assertEqual(result["ma_last_30_days"], 140.56)
+        self.assertEqual(result["ma_last_quarter"], 120.11)
 
 
 if __name__ == "__main__":

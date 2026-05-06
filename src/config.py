@@ -31,10 +31,8 @@ ALERT_THRESHOLDS = {
 # Minimum upside required to send alert
 MIN_UPSIDE_FOR_ALERT = 8.0
 
-# Technical indicators periods (in days)
+# Technical indicator period (in days)
 MA200_PERIOD = 200
-MA_1YEAR_PERIOD = 252  # Trading days in a year
-MA_3MONTH_PERIOD = 63   # Trading days in 3 months
 
 # Logging is optional; INFO keeps normal console output.
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

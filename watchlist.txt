@@ -1,18 +1,27 @@
 # Stock Watchlist for Stock Dip Alert System
-# Add one ticker symbol per line
-# Lines starting with '#' are comments and will be ignored
-# Ticker symbols will be automatically converted to uppercase
+# Add one ticker symbol per line.
+# Lines starting with '#' are comments and will be ignored.
+# Ticker symbols will be automatically converted to uppercase.
+# Edit this file anytime to change what the scanner watches.
 
-# Example watchlist - replace with your own stocks
-AAPL
-MSFT
-GOOGL
-TSLA
-NVDA
-AMD
-META
+BABA
+LLY
+RIVN
+PG
+JNJ
+XOM
 AMZN
-JPM
-V
-
-# Add more tickers below:
+TSLA
+PLD
+QCOM
+POWI
+ZM
+MSFT
+NVDA
+AVGO
+AAPL
+GOOG
+ASML
+LOGI
+HP
+INTC

@@ -1,7 +1,10 @@
 """Data provider for fetching historical price data using yfinance."""
 
+from datetime import date, timedelta
 from typing import Tuple, Optional
 import logging
+
+import pandas as pd
 
 try:
     import yfinance as yf
@@ -70,49 +73,98 @@ def get_current_price(ticker: str) -> Optional[float]:
         return None
 
 
+def _period_average(
+    closing_prices: pd.Series,
+    start_date: date,
+    end_date: date,
+) -> Optional[float]:
+    """Calculate the average close price over an inclusive date range."""
+    period_dates = closing_prices.index.date
+    period_prices = closing_prices.loc[
+        (period_dates >= start_date) & (period_dates <= end_date)
+    ]
+
+    if period_prices.empty:
+        return None
+
+    return float(period_prices.mean())
+
+
+def _last_30_days_range(reference_date: date) -> tuple[date, date]:
+    """Return the inclusive date range for the last 30 calendar days."""
+    end_date = reference_date
+    start_date = reference_date - timedelta(days=29)
+    return start_date, end_date
+
+
+def _previous_quarter_range(reference_date: date) -> tuple[date, date]:
+    """Return the start and end date for the previous completed calendar quarter."""
+    current_quarter_start_month = ((reference_date.month - 1) // 3) * 3 + 1
+    current_quarter_start = date(reference_date.year, current_quarter_start_month, 1)
+    previous_quarter_end = current_quarter_start - timedelta(days=1)
+    previous_quarter_start_month = ((previous_quarter_end.month - 1) // 3) * 3 + 1
+    previous_quarter_start = date(
+        previous_quarter_end.year,
+        previous_quarter_start_month,
+        1,
+    )
+    return previous_quarter_start, previous_quarter_end
+
+
 def calculate_moving_averages(
     ticker: str,
     ma200_period: int = 200,
-    ma_1year_period: int = 252,
-    ma_3month_period: int = 63
-) -> Optional[Tuple[float, float, float, float]]:
+) -> Optional[Tuple[float, float, float, float, float]]:
     """
-    Calculate moving averages for a stock.
-    
+    Calculate historical averages for a stock.
+
     Args:
         ticker: Stock ticker symbol
         ma200_period: Number of trading days for MA200 (default 200)
-        ma_1year_period: Number of trading days for 1-year average (default 252)
-        ma_3month_period: Number of trading days for 3-month average (default 63)
-        
+
     Returns:
-        Tuple of (current_price, ma200, ma_1year, ma_3month)
+        Tuple of (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter)
         or None if unable to calculate
     """
     try:
-        # Fetch 1 year of historical data to ensure we have enough for MA200
         stock = yf.Ticker(ticker)
-        hist = stock.history(period="1y")
-        
+        hist = stock.history(period="max")
+
         if hist.empty or len(hist) < ma200_period:
             logger.warning(
                 f"Insufficient data for {ticker}. "
                 f"Got {len(hist)} days, need at least {ma200_period}"
             )
             return None
-        
+
         closing_prices = hist["Close"]
-        
-        # Get current price (most recent close)
-        current_price = closing_prices.iloc[-1]
-        
-        # Calculate moving averages
-        ma200 = closing_prices.tail(ma200_period).mean()
-        ma_1year = closing_prices.tail(ma_1year_period).mean()
-        ma_3month = closing_prices.tail(ma_3month_period).mean()
-        
-        return (float(current_price), float(ma200), float(ma_1year), float(ma_3month))
-        
+        current_price = float(closing_prices.iloc[-1])
+        ma_alltime = float(closing_prices.mean())
+        ma200 = float(closing_prices.tail(ma200_period).mean())
+
+        reference_date = closing_prices.index[-1].date()
+        last_month_start, last_month_end = _last_30_days_range(reference_date)
+        last_quarter_start, last_quarter_end = _previous_quarter_range(reference_date)
+
+        ma_last_month = _period_average(closing_prices, last_month_start, last_month_end)
+        ma_last_quarter = _period_average(
+            closing_prices,
+            last_quarter_start,
+            last_quarter_end,
+        )
+
+        if ma_last_month is None or ma_last_quarter is None:
+            logger.warning(f"Insufficient calendar data for {ticker}")
+            return None
+
+        return (
+            current_price,
+            ma_alltime,
+            ma200,
+            ma_last_month,
+            ma_last_quarter,
+        )
+
     except Exception as e:
         logger.error(f"Error calculating moving averages for {ticker}: {e}")
         return None

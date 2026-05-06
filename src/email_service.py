@@ -235,3 +235,147 @@ def send_alert_email(
     )
     
     return send_email(sender, app_password, recipient, subject, body_html)
+
+
+def create_summary_email_html(alerts: List[dict]) -> str:
+    """
+    Create a summary HTML email with all alerts from a scan run.
+    
+    Args:
+        alerts: List of alert dictionaries with keys: ticker, company_name,
+          current_price, ma_alltime, ma200, ma_last_30_days,
+          ma_last_quarter, upside_to_alltime, upside_to_ma200,
+          upside_to_last_30_days, upside_to_last_quarter, alert_level
+        
+    Returns:
+        HTML string for email body
+    """
+    level_icons = {
+        "watch": "⚠️",
+        "good_opportunity": "✅",
+        "deep_discount": "🔥",
+        "investigate_carefully": "🚨",
+    }
+    level_names = {
+        "watch": "Watch",
+        "good_opportunity": "Good Opportunity",
+        "deep_discount": "Deep Discount",
+        "investigate_carefully": "Investigate Carefully",
+    }
+    
+    alerts_html = ""
+    for alert in alerts:
+        ticker = alert["ticker"]
+        company_name = alert.get("company_name") or ticker
+        current_price = alert["current_price"]
+        ma_alltime = alert["ma_alltime"]
+        ma200 = alert["ma200"]
+        ma_last_30_days = alert["ma_last_30_days"]
+        ma_last_quarter = alert["ma_last_quarter"]
+        upside_alltime = alert["upside_to_alltime"]
+        upside_ma200 = alert["upside_to_ma200"]
+        upside_last_30_days = alert["upside_to_last_30_days"]
+        upside_last_quarter = alert["upside_to_last_quarter"]
+        level = alert["alert_level"]
+        
+        icon = level_icons.get(level, "📊")
+        level_name = level_names.get(level, level)
+        
+        alerts_html += f"""
+        <div style="background-color: #fff; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #e74c3c;">
+          <h4 style="margin: 0 0 10px 0; color: #e74c3c;">
+            {icon} {company_name} ({ticker})
+          </h4>
+          <p style="margin: 5px 0; font-size: 14px;">
+            <strong>Alert Level:</strong> {level_name} | 
+            <strong>Current Price:</strong> ${current_price:.2f}
+          </p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
+            <tr style="border-bottom: 1px solid #ecf0f1; background-color: #f9f9f9;">
+              <td style="padding: 8px; font-weight: bold;">Metric</td>
+              <td style="padding: 8px; font-weight: bold;">Value</td>
+              <td style="padding: 8px; font-weight: bold;">Upside</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ecf0f1;">
+              <td style="padding: 8px;">All-Time Average</td>
+              <td style="padding: 8px;">${ma_alltime:.2f}</td>
+              <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_alltime:.2f}%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ecf0f1;">
+              <td style="padding: 8px;">200-Day MA</td>
+              <td style="padding: 8px;">${ma200:.2f}</td>
+              <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_ma200:.2f}%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ecf0f1;">
+              <td style="padding: 8px;">Last 30 Days Average</td>
+              <td style="padding: 8px;">${ma_last_30_days:.2f}</td>
+              <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_last_30_days:.2f}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px;">Last Quarter Average</td>
+              <td style="padding: 8px;">${ma_last_quarter:.2f}</td>
+              <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_last_quarter:.2f}%</td>
+            </tr>
+          </table>
+        </div>
+        """
+    
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #ddd;">
+          
+          <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+            📊 Stock Dip Alert Summary
+          </h2>
+          
+          <p style="background-color: #ecf0f1; padding: 10px; border-radius: 5px; margin: 15px 0;">
+            <strong>Scan Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC<br>
+            <strong>Alerts Found:</strong> {len(alerts)}
+          </p>
+          
+          <div style="margin: 20px 0;">
+            {alerts_html}
+          </div>
+          
+          <div style="background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin: 15px 0; font-size: 12px; color: #555;">
+            <p style="margin: 5px 0;">
+              This is an automated summary from your stock dip monitoring system.
+            </p>
+          </div>
+          
+        </div>
+      </body>
+    </html>
+    """
+    
+    return html
+
+
+def send_summary_email(
+    sender: str,
+    app_password: str,
+    recipient: str,
+    alerts: List[dict]
+) -> bool:
+    """
+    Send a summary email with all alerts from a scan run.
+    
+    Args:
+        sender: Gmail address
+        app_password: Gmail app-specific password
+        recipient: Email recipient
+        alerts: List of alert dictionaries
+        
+    Returns:
+        True if email sent successfully, False otherwise
+    """
+    if not alerts:
+        logger.info("No alerts to send")
+        return True
+    
+    subject = f"Stock Dip Alert Summary - {len(alerts)} Opportunities"
+    body_html = create_summary_email_html(alerts)
+    
+    return send_email(sender, app_password, recipient, subject, body_html)
