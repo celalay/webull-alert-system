@@ -114,16 +114,17 @@ def _previous_quarter_range(reference_date: date) -> tuple[date, date]:
 def calculate_moving_averages(
     ticker: str,
     ma200_period: int = 200,
-) -> Optional[Tuple[float, float, float, float, float]]:
+) -> Optional[Tuple[float, float, float, float, float, float, float, float]]:
     """
-    Calculate historical averages for a stock.
+    Calculate historical averages and 52-week forecast metrics for a stock.
 
     Args:
         ticker: Stock ticker symbol
         ma200_period: Number of trading days for MA200 (default 200)
 
     Returns:
-        Tuple of (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter)
+        Tuple of (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter,
+                  week52_high, week52_low, week52_avg)
         or None if unable to calculate
     """
     try:
@@ -157,12 +158,31 @@ def calculate_moving_averages(
             logger.warning(f"Insufficient calendar data for {ticker}")
             return None
 
+        # Calculate 52-week metrics
+        hist_52week = stock.history(period="1y")
+        if not hist_52week.empty:
+            week52_high = float(hist_52week["Close"].max())
+            week52_low = float(hist_52week["Close"].min())
+            week52_avg = float(hist_52week["Close"].mean())
+        else:
+            logger.warning(f"Insufficient 52-week data for {ticker}")
+            return None
+
+        logger.debug(
+            f"[{ticker}] Raw values - Current: {current_price}, AllTime: {ma_alltime}, "
+            f"MA200: {ma200}, Last30: {ma_last_month}, LastQtr: {ma_last_quarter}, "
+            f"52wHigh: {week52_high}, 52wLow: {week52_low}, 52wAvg: {week52_avg}"
+        )
+
         return (
             current_price,
             ma_alltime,
             ma200,
             ma_last_month,
             ma_last_quarter,
+            week52_high,
+            week52_low,
+            week52_avg,
         )
 
     except Exception as e:

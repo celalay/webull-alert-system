@@ -83,10 +83,14 @@ def analyze_stock(
     ma200: float,
     ma_last_30_days: float,
     ma_last_quarter: float,
-    min_upside_threshold: float = 8.0
+    week52_high: float,
+    week52_low: float,
+    week52_avg: float,
+    min_upside_threshold: float = 8.0,
+    min_drop_from_52week_threshold: float = 8.0,
 ) -> Dict:
     """
-    Analyze a stock and return comprehensive metrics.
+    Analyze a stock and return comprehensive metrics using dual-signal approach.
     
     Args:
         ticker: Stock ticker symbol
@@ -95,32 +99,58 @@ def analyze_stock(
         ma200: 200-day moving average
         ma_last_30_days: Last 30 calendar days average price
         ma_last_quarter: Last completed calendar quarter average price
-        min_upside_threshold: Minimum upside for alert
+        week52_high: 52-week high price
+        week52_low: 52-week low price
+        week52_avg: 52-week average price
+        min_upside_threshold: Minimum upside for historical alert (default 8%)
+        min_drop_from_52week_threshold: Minimum drop from 52-week avg for forecast alert (default 8%)
         
     Returns:
         Dictionary with analysis results including:
         - ticker: Stock ticker
         - current_price: Current price
-        - ma_alltime: All-time average
-        - ma200: 200-day MA
-        - ma_last_30_days: Last 30 days average
-        - ma_last_quarter: Last quarter average
-        - upside_to_alltime: Upside to all-time average as percentage
-        - upside_to_ma200: Upside to MA200 as percentage
-        - upside_to_last_month: Upside to last month average as percentage
-        - upside_to_last_quarter: Upside to last quarter average as percentage
-        - alert_triggered: Boolean for whether alert should be sent
-        - alert_level: Classification of alert level
+        - ma_alltime, ma200, ma_last_30_days, ma_last_quarter: Historical metrics
+        - week52_high, week52_low, week52_avg: 52-week metrics
+        - upside_to_ma200: Upside to MA200 (historical signal)
+        - drop_from_week52_avg: Drop from 52-week average (forecast signal)
+        - alert_triggered: Boolean (True if EITHER signal meets threshold)
+        - alert_level: Classification based on triggered signal
+        - alert_source: "historical", "forecast", or "both"
     """
+    # Historical signal
     upside_to_alltime = calculate_upside_percentage(current_price, ma_alltime)
     upside_to_ma200 = calculate_upside_percentage(current_price, ma200)
     upside_to_last_month = calculate_upside_percentage(current_price, ma_last_30_days)
     upside_to_last_quarter = calculate_upside_percentage(current_price, ma_last_quarter)
     
-    alert_triggered = should_alert(
+    # Forecast signal (drop from 52-week average)
+    drop_from_week52_avg = calculate_upside_percentage(current_price, week52_avg)
+    
+    # Alert logic: trigger if EITHER condition is met
+    historical_alert = should_alert(
         current_price, ma200, upside_to_ma200, min_upside_threshold
     )
-    alert_level = classify_alert_level(upside_to_ma200) if alert_triggered else "no_alert"
+    forecast_alert = drop_from_week52_avg <= -min_drop_from_52week_threshold
+    
+    alert_triggered = historical_alert or forecast_alert
+    
+    # Determine alert source and level
+    if alert_triggered:
+        if historical_alert and forecast_alert:
+            alert_source = "both"
+            # Use the stronger signal for level
+            primary_signal = abs(drop_from_week52_avg) if abs(drop_from_week52_avg) > upside_to_ma200 else upside_to_ma200
+        elif forecast_alert:
+            alert_source = "forecast"
+            primary_signal = abs(drop_from_week52_avg)
+        else:
+            alert_source = "historical"
+            primary_signal = upside_to_ma200
+        
+        alert_level = classify_alert_level(primary_signal)
+    else:
+        alert_source = "none"
+        alert_level = "no_alert"
     
     return {
         "ticker": ticker,
@@ -129,12 +159,17 @@ def analyze_stock(
         "ma200": round(ma200, 2),
         "ma_last_30_days": round(ma_last_30_days, 2),
         "ma_last_quarter": round(ma_last_quarter, 2),
+        "week52_high": round(week52_high, 2),
+        "week52_low": round(week52_low, 2),
+        "week52_avg": round(week52_avg, 2),
         "upside_to_alltime": round(upside_to_alltime, 2),
         "upside_to_ma200": round(upside_to_ma200, 2),
         "upside_to_last_30_days": round(upside_to_last_month, 2),
         "upside_to_last_quarter": round(upside_to_last_quarter, 2),
+        "drop_from_week52_avg": round(drop_from_week52_avg, 2),
         "alert_triggered": alert_triggered,
         "alert_level": alert_level,
+        "alert_source": alert_source,
     }
 
 

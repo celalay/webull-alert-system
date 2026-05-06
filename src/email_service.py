@@ -244,8 +244,10 @@ def create_summary_email_html(alerts: List[dict]) -> str:
     Args:
         alerts: List of alert dictionaries with keys: ticker, company_name,
           current_price, ma_alltime, ma200, ma_last_30_days,
-          ma_last_quarter, upside_to_alltime, upside_to_ma200,
-          upside_to_last_30_days, upside_to_last_quarter, alert_level
+          ma_last_quarter, week52_high, week52_low, week52_avg,
+          upside_to_alltime, upside_to_ma200,
+          upside_to_last_30_days, upside_to_last_quarter, 
+          drop_from_week52_avg, alert_level, alert_source
         
     Returns:
         HTML string for email body
@@ -272,14 +274,28 @@ def create_summary_email_html(alerts: List[dict]) -> str:
         ma200 = alert["ma200"]
         ma_last_30_days = alert["ma_last_30_days"]
         ma_last_quarter = alert["ma_last_quarter"]
+        week52_high = alert["week52_high"]
+        week52_low = alert["week52_low"]
+        week52_avg = alert["week52_avg"]
         upside_alltime = alert["upside_to_alltime"]
         upside_ma200 = alert["upside_to_ma200"]
         upside_last_30_days = alert["upside_to_last_30_days"]
         upside_last_quarter = alert["upside_to_last_quarter"]
+        drop_from_52week = alert["drop_from_week52_avg"]
         level = alert["alert_level"]
+        alert_source = alert["alert_source"]
         
         icon = level_icons.get(level, "📊")
         level_name = level_names.get(level, level)
+        
+        # Determine signal display
+        signal_display = ""
+        if alert_source == "both":
+            signal_display = "🔔 DUAL SIGNAL (Historical + Forecast)"
+        elif alert_source == "forecast":
+            signal_display = "📈 Forecast Signal (52-week drop)"
+        elif alert_source == "historical":
+            signal_display = "📊 Historical Signal (MA200)"
         
         alerts_html += f"""
         <div style="background-color: #fff; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #e74c3c;">
@@ -288,14 +304,15 @@ def create_summary_email_html(alerts: List[dict]) -> str:
           </h4>
           <p style="margin: 5px 0; font-size: 14px;">
             <strong>Alert Level:</strong> {level_name} | 
-            <strong>Current Price:</strong> ${current_price:.2f}
+            <strong>Current Price:</strong> ${current_price:.2f} | 
+            <strong>Signal:</strong> {signal_display}
           </p>
           
           <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
             <tr style="border-bottom: 1px solid #ecf0f1; background-color: #f9f9f9;">
               <td style="padding: 8px; font-weight: bold;">Metric</td>
               <td style="padding: 8px; font-weight: bold;">Value</td>
-              <td style="padding: 8px; font-weight: bold;">Upside</td>
+              <td style="padding: 8px; font-weight: bold;">Upside/Drop</td>
             </tr>
             <tr style="border-bottom: 1px solid #ecf0f1;">
               <td style="padding: 8px;">All-Time Average</td>
@@ -312,10 +329,25 @@ def create_summary_email_html(alerts: List[dict]) -> str:
               <td style="padding: 8px;">${ma_last_30_days:.2f}</td>
               <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_last_30_days:.2f}%</td>
             </tr>
-            <tr>
+            <tr style="border-bottom: 1px solid #ecf0f1;">
               <td style="padding: 8px;">Last Quarter Average</td>
               <td style="padding: 8px;">${ma_last_quarter:.2f}</td>
               <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_last_quarter:.2f}%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ecf0f1; background-color: #fef9e7;">
+              <td style="padding: 8px; font-weight: bold;">52-Week High</td>
+              <td style="padding: 8px; font-weight: bold;">${week52_high:.2f}</td>
+              <td style="padding: 8px; color: #d35400; font-weight: bold;">Peak</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ecf0f1; background-color: #fef9e7;">
+              <td style="padding: 8px; font-weight: bold;">52-Week Average</td>
+              <td style="padding: 8px; font-weight: bold;">${week52_avg:.2f}</td>
+              <td style="padding: 8px; color: #d35400; font-weight: bold;">{drop_from_52week:.2f}%</td>
+            </tr>
+            <tr style="background-color: #fef9e7;">
+              <td style="padding: 8px; font-weight: bold;">52-Week Low</td>
+              <td style="padding: 8px; font-weight: bold;">${week52_low:.2f}</td>
+              <td style="padding: 8px; color: #d35400; font-weight: bold;">Floor</td>
             </tr>
           </table>
         </div>

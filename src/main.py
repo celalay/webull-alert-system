@@ -13,6 +13,7 @@ from config import (
     GMAIL_APP_PASSWORD,
     GMAIL_RECIPIENT,
     MIN_UPSIDE_FOR_ALERT,
+    MIN_DROP_FROM_52WEEK_AVG,
     MA200_PERIOD,
     LOG_LEVEL,
 )
@@ -98,9 +99,10 @@ def run_scan() -> None:
                 errors_count += 1
                 continue
             
-            current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter = data
+            (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter,
+             week52_high, week52_low, week52_avg) = data
             
-            # Analyze stock
+            # Analyze stock with dual-signal approach
             analysis = analyze_stock(
                 ticker=ticker,
                 current_price=current_price,
@@ -108,17 +110,18 @@ def run_scan() -> None:
                 ma200=ma200,
                 ma_last_30_days=ma_last_30_days,
                 ma_last_quarter=ma_last_quarter,
+                week52_high=week52_high,
+                week52_low=week52_low,
+                week52_avg=week52_avg,
                 min_upside_threshold=MIN_UPSIDE_FOR_ALERT,
+                min_drop_from_52week_threshold=MIN_DROP_FROM_52WEEK_AVG,
             )
             
-            # Log analysis results
+            # Log analysis results with dual signals
             logger.info(
                 f"{ticker}: Price=${analysis['current_price']}, "
-                f"All-Time=${analysis['ma_alltime']}, "
-                f"MA200=${analysis['ma200']}, "
-                f"Last 30 Days=${analysis['ma_last_30_days']}, "
-                f"Last Quarter=${analysis['ma_last_quarter']}, "
-                f"Upside={analysis['upside_to_ma200']}%"
+                f"MA200=${analysis['ma200']} (Upside={analysis['upside_to_ma200']}%), "
+                f"52wAvg=${analysis['week52_avg']} (Drop={analysis['drop_from_week52_avg']}%)"
             )
             
             # Collect alert if triggered
@@ -141,11 +144,16 @@ def run_scan() -> None:
                     "ma200": analysis["ma200"],
                     "ma_last_30_days": analysis["ma_last_30_days"],
                     "ma_last_quarter": analysis["ma_last_quarter"],
+                    "week52_high": analysis["week52_high"],
+                    "week52_low": analysis["week52_low"],
+                    "week52_avg": analysis["week52_avg"],
                     "upside_to_alltime": analysis["upside_to_alltime"],
                     "upside_to_ma200": analysis["upside_to_ma200"],
                     "upside_to_last_30_days": analysis["upside_to_last_30_days"],
                     "upside_to_last_quarter": analysis["upside_to_last_quarter"],
+                    "drop_from_week52_avg": analysis["drop_from_week52_avg"],
                     "alert_level": analysis["alert_level"],
+                    "alert_source": analysis["alert_source"],
                 })
         
         except Exception as e:

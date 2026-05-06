@@ -28,8 +28,11 @@ ALERT_THRESHOLDS = {
     "investigate": 20.0,    # 20%+
 }
 
-# Minimum upside required to send alert
+# Minimum upside required to send alert (historical metric)
 MIN_UPSIDE_FOR_ALERT = 8.0
+
+# Minimum drop from 52-week average to trigger forecast alert
+MIN_DROP_FROM_52WEEK_AVG = 8.0
 
 # Technical indicator period (in days)
 MA200_PERIOD = 200
