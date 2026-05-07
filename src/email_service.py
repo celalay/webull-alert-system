@@ -245,9 +245,10 @@ def create_summary_email_html(alerts: List[dict]) -> str:
         alerts: List of alert dictionaries with keys: ticker, company_name,
           current_price, ma_alltime, ma200, ma_last_30_days,
           ma_last_quarter, week52_high, week52_low, week52_avg,
+          forecast_high, forecast_low, forecast_avg,
           upside_to_alltime, upside_to_ma200,
-          upside_to_last_30_days, upside_to_last_quarter, 
-          drop_from_week52_avg, alert_level, alert_source
+          upside_to_last_30_days, upside_to_last_quarter,
+          upside_to_forecast_avg, alert_level, alert_source
         
     Returns:
         HTML string for email body
@@ -277,11 +278,15 @@ def create_summary_email_html(alerts: List[dict]) -> str:
         week52_high = alert["week52_high"]
         week52_low = alert["week52_low"]
         week52_avg = alert["week52_avg"]
+        forecast_high = alert.get("forecast_high")
+        forecast_low = alert.get("forecast_low")
+        forecast_avg = alert.get("forecast_avg")
+        drop_from_52week = alert["drop_from_week52_avg"]
         upside_alltime = alert["upside_to_alltime"]
         upside_ma200 = alert["upside_to_ma200"]
         upside_last_30_days = alert["upside_to_last_30_days"]
         upside_last_quarter = alert["upside_to_last_quarter"]
-        drop_from_52week = alert["drop_from_week52_avg"]
+        upside_to_forecast_avg = alert["upside_to_forecast_avg"]
         level = alert["alert_level"]
         alert_source = alert["alert_source"]
         
@@ -348,6 +353,21 @@ def create_summary_email_html(alerts: List[dict]) -> str:
               <td style="padding: 8px; font-weight: bold;">52-Week Low</td>
               <td style="padding: 8px; font-weight: bold;">${week52_low:.2f}</td>
               <td style="padding: 8px; color: #d35400; font-weight: bold;">Floor</td>
+            </tr>
+            <tr style="border-top: 1px solid #ecf0f1; background-color: #fff9f0;">
+              <td style="padding: 8px; font-weight: bold;">Forecast High (analyst target)</td>
+              <td style="padding: 8px; font-weight: bold;">${forecast_high:.2f}</td>
+              <td style="padding: 8px; color: #d35400; font-weight: bold;">Target</td>
+            </tr>
+            <tr style="background-color: #fff9f0;">
+              <td style="padding: 8px; font-weight: bold;">Forecast Average (consensus)</td>
+              <td style="padding: 8px; font-weight: bold;">${forecast_avg:.2f}</td>
+              <td style="padding: 8px; color: #27ae60; font-weight: bold;">{upside_to_forecast_avg:.2f}%</td>
+            </tr>
+            <tr style="background-color: #fff9f0;">
+              <td style="padding: 8px; font-weight: bold;">Forecast Low (analyst target)</td>
+              <td style="padding: 8px; font-weight: bold;">${forecast_low:.2f}</td>
+              <td style="padding: 8px; color: #d35400; font-weight: bold;">Target</td>
             </tr>
           </table>
         </div>

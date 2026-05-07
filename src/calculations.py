@@ -86,6 +86,9 @@ def analyze_stock(
     week52_high: float,
     week52_low: float,
     week52_avg: float,
+    forecast_high: float,
+    forecast_low: float,
+    forecast_avg: float,
     min_upside_threshold: float = 8.0,
     min_drop_from_52week_threshold: float = 8.0,
 ) -> Dict:
@@ -112,7 +115,7 @@ def analyze_stock(
         - ma_alltime, ma200, ma_last_30_days, ma_last_quarter: Historical metrics
         - week52_high, week52_low, week52_avg: 52-week metrics
         - upside_to_ma200: Upside to MA200 (historical signal)
-        - drop_from_week52_avg: Drop from 52-week average (forecast signal)
+        - upside_to_forecast_avg: Upside to analyst forecast average (forecast signal)
         - alert_triggered: Boolean (True if EITHER signal meets threshold)
         - alert_level: Classification based on triggered signal
         - alert_source: "historical", "forecast", or "both"
@@ -123,14 +126,18 @@ def analyze_stock(
     upside_to_last_month = calculate_upside_percentage(current_price, ma_last_30_days)
     upside_to_last_quarter = calculate_upside_percentage(current_price, ma_last_quarter)
     
-    # Forecast signal (drop from 52-week average)
+    # Forecast signal (upside to analyst forecast average)
+    upside_to_forecast_avg = calculate_upside_percentage(current_price, forecast_avg)
     drop_from_week52_avg = calculate_upside_percentage(current_price, week52_avg)
     
     # Alert logic: trigger if EITHER condition is met
     historical_alert = should_alert(
         current_price, ma200, upside_to_ma200, min_upside_threshold
     )
-    forecast_alert = drop_from_week52_avg <= -min_drop_from_52week_threshold
+    forecast_alert = (
+        current_price < forecast_avg
+        and upside_to_forecast_avg >= min_drop_from_52week_threshold
+    )
     
     alert_triggered = historical_alert or forecast_alert
     
@@ -139,10 +146,14 @@ def analyze_stock(
         if historical_alert and forecast_alert:
             alert_source = "both"
             # Use the stronger signal for level
-            primary_signal = abs(drop_from_week52_avg) if abs(drop_from_week52_avg) > upside_to_ma200 else upside_to_ma200
+            primary_signal = (
+                upside_to_forecast_avg
+                if upside_to_forecast_avg > upside_to_ma200
+                else upside_to_ma200
+            )
         elif forecast_alert:
             alert_source = "forecast"
-            primary_signal = abs(drop_from_week52_avg)
+            primary_signal = upside_to_forecast_avg
         else:
             alert_source = "historical"
             primary_signal = upside_to_ma200
@@ -159,6 +170,9 @@ def analyze_stock(
         "ma200": round(ma200, 2),
         "ma_last_30_days": round(ma_last_30_days, 2),
         "ma_last_quarter": round(ma_last_quarter, 2),
+        "forecast_high": round(forecast_high, 2),
+        "forecast_low": round(forecast_low, 2),
+        "forecast_avg": round(forecast_avg, 2),
         "week52_high": round(week52_high, 2),
         "week52_low": round(week52_low, 2),
         "week52_avg": round(week52_avg, 2),
@@ -167,6 +181,7 @@ def analyze_stock(
         "upside_to_last_30_days": round(upside_to_last_month, 2),
         "upside_to_last_quarter": round(upside_to_last_quarter, 2),
         "drop_from_week52_avg": round(drop_from_week52_avg, 2),
+        "upside_to_forecast_avg": round(upside_to_forecast_avg, 2),
         "alert_triggered": alert_triggered,
         "alert_level": alert_level,
         "alert_source": alert_source,

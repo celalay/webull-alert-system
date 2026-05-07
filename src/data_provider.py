@@ -114,7 +114,7 @@ def _previous_quarter_range(reference_date: date) -> tuple[date, date]:
 def calculate_moving_averages(
     ticker: str,
     ma200_period: int = 200,
-) -> Optional[Tuple[float, float, float, float, float, float, float, float]]:
+) -> Optional[Tuple[float, float, float, float, float, float, float, float, float, float, float]]:
     """
     Calculate historical averages and 52-week forecast metrics for a stock.
 
@@ -124,7 +124,8 @@ def calculate_moving_averages(
 
     Returns:
         Tuple of (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter,
-                  week52_high, week52_low, week52_avg)
+                  week52_high, week52_low, week52_avg, forecast_high, forecast_low,
+                  forecast_avg)
         or None if unable to calculate
     """
     try:
@@ -161,17 +162,30 @@ def calculate_moving_averages(
         # Calculate 52-week metrics
         hist_52week = stock.history(period="1y")
         if not hist_52week.empty:
-            week52_high = float(hist_52week["Close"].max())
-            week52_low = float(hist_52week["Close"].min())
-            week52_avg = float(hist_52week["Close"].mean())
+            week52_close = hist_52week["Close"]
+            week52_high = float(week52_close.max())
+            week52_low = float(week52_close.min())
+            week52_avg = float(week52_close.mean())
         else:
             logger.warning(f"Insufficient 52-week data for {ticker}")
             return None
 
+        # Public analyst target prices are a better proxy for Webull-style
+        # forecast high / average / low than synthetic midpoint calculations.
+        info = stock.info or {}
+        forecast_high = float(info.get("targetHighPrice") or week52_high)
+        forecast_low = float(info.get("targetLowPrice") or week52_low)
+        forecast_avg = float(
+            info.get("targetMeanPrice")
+            or info.get("targetMedianPrice")
+            or week52_avg
+        )
+
         logger.debug(
             f"[{ticker}] Raw values - Current: {current_price}, AllTime: {ma_alltime}, "
             f"MA200: {ma200}, Last30: {ma_last_month}, LastQtr: {ma_last_quarter}, "
-            f"52wHigh: {week52_high}, 52wLow: {week52_low}, 52wAvg: {week52_avg}"
+            f"52wHigh: {week52_high}, 52wLow: {week52_low}, 52wAvg: {week52_avg}, "
+            f"ForecastHigh: {forecast_high}, ForecastLow: {forecast_low}, ForecastAvg: {forecast_avg}"
         )
 
         return (
@@ -183,6 +197,9 @@ def calculate_moving_averages(
             week52_high,
             week52_low,
             week52_avg,
+            forecast_high,
+            forecast_low,
+            forecast_avg,
         )
 
     except Exception as e:

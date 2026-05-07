@@ -100,7 +100,7 @@ def run_scan() -> None:
                 continue
             
             (current_price, ma_alltime, ma200, ma_last_30_days, ma_last_quarter,
-             week52_high, week52_low, week52_avg) = data
+             week52_high, week52_low, week52_avg, forecast_high, forecast_low, forecast_avg) = data
             
             # Analyze stock with dual-signal approach
             analysis = analyze_stock(
@@ -113,6 +113,9 @@ def run_scan() -> None:
                 week52_high=week52_high,
                 week52_low=week52_low,
                 week52_avg=week52_avg,
+                forecast_high=forecast_high,
+                forecast_low=forecast_low,
+                forecast_avg=forecast_avg,
                 min_upside_threshold=MIN_UPSIDE_FOR_ALERT,
                 min_drop_from_52week_threshold=MIN_DROP_FROM_52WEEK_AVG,
             )
@@ -121,7 +124,7 @@ def run_scan() -> None:
             logger.info(
                 f"{ticker}: Price=${analysis['current_price']}, "
                 f"MA200=${analysis['ma200']} (Upside={analysis['upside_to_ma200']}%), "
-                f"52wAvg=${analysis['week52_avg']} (Drop={analysis['drop_from_week52_avg']}%)"
+                f"ForecastAvg=${analysis['forecast_avg']} (Upside={analysis['upside_to_forecast_avg']}%)"
             )
             
             # Collect alert if triggered
@@ -144,14 +147,18 @@ def run_scan() -> None:
                     "ma200": analysis["ma200"],
                     "ma_last_30_days": analysis["ma_last_30_days"],
                     "ma_last_quarter": analysis["ma_last_quarter"],
+                    "forecast_high": analysis.get("forecast_high"),
+                    "forecast_low": analysis.get("forecast_low"),
+                    "forecast_avg": analysis.get("forecast_avg"),
                     "week52_high": analysis["week52_high"],
                     "week52_low": analysis["week52_low"],
                     "week52_avg": analysis["week52_avg"],
+                    "drop_from_week52_avg": analysis["drop_from_week52_avg"],
+                    "upside_to_forecast_avg": analysis["upside_to_forecast_avg"],
                     "upside_to_alltime": analysis["upside_to_alltime"],
                     "upside_to_ma200": analysis["upside_to_ma200"],
                     "upside_to_last_30_days": analysis["upside_to_last_30_days"],
                     "upside_to_last_quarter": analysis["upside_to_last_quarter"],
-                    "drop_from_week52_avg": analysis["drop_from_week52_avg"],
                     "alert_level": analysis["alert_level"],
                     "alert_source": analysis["alert_source"],
                 })
