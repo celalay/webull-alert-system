@@ -1,6 +1,6 @@
 """Calculation logic for stock analysis and alert levels."""
 
-from typing import Dict, Optional, Tuple
+from typing import Dict
 
 
 def calculate_upside_percentage(current_price: float, target_price: float) -> float:
@@ -93,7 +93,8 @@ def analyze_stock(
     min_drop_from_52week_threshold: float = 8.0,
 ) -> Dict:
     """
-    Analyze a stock and return comprehensive metrics using dual-signal approach.
+    Analyze a stock and return comprehensive metrics using a stricter two-step
+    filter.
     
     Args:
         ticker: Stock ticker symbol
@@ -116,9 +117,10 @@ def analyze_stock(
         - week52_high, week52_low, week52_avg: 52-week metrics
         - upside_to_ma200: Upside to MA200 (historical signal)
         - upside_to_forecast_avg: Upside to analyst forecast average (forecast signal)
-        - alert_triggered: Boolean (True if EITHER signal meets threshold)
-        - alert_level: Classification based on triggered signal
-        - alert_source: "historical", "forecast", or "both"
+                - alert_triggered: Boolean (True only when below MA200 and forecast
+                    upside clears the threshold)
+                - alert_level: Classification based on the forecast signal
+                - alert_source: "both" or "none"
     """
     # Historical signal
     upside_to_alltime = calculate_upside_percentage(current_price, ma_alltime)
@@ -130,35 +132,20 @@ def analyze_stock(
     upside_to_forecast_avg = calculate_upside_percentage(current_price, forecast_avg)
     drop_from_week52_avg = calculate_upside_percentage(current_price, week52_avg)
     
-    # Alert logic: trigger if EITHER condition is met
-    historical_alert = should_alert(
-        current_price, ma200, upside_to_ma200, min_upside_threshold
-    )
+    # Alert logic: require the stock to be below MA200 and the forecast average
+    # to offer enough upside before we add it to the alert list.
+    below_ma200 = current_price < ma200
     forecast_alert = (
         current_price < forecast_avg
         and upside_to_forecast_avg >= min_drop_from_52week_threshold
     )
     
-    alert_triggered = historical_alert or forecast_alert
+    alert_triggered = below_ma200 and forecast_alert
     
     # Determine alert source and level
     if alert_triggered:
-        if historical_alert and forecast_alert:
-            alert_source = "both"
-            # Use the stronger signal for level
-            primary_signal = (
-                upside_to_forecast_avg
-                if upside_to_forecast_avg > upside_to_ma200
-                else upside_to_ma200
-            )
-        elif forecast_alert:
-            alert_source = "forecast"
-            primary_signal = upside_to_forecast_avg
-        else:
-            alert_source = "historical"
-            primary_signal = upside_to_ma200
-        
-        alert_level = classify_alert_level(primary_signal)
+        alert_source = "both"
+        alert_level = classify_alert_level(upside_to_forecast_avg)
     else:
         alert_source = "none"
         alert_level = "no_alert"

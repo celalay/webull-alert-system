@@ -139,17 +139,32 @@ class TestAlertLogic(unittest.TestCase):
 
 class TestStockAnalysis(unittest.TestCase):
     """Test comprehensive stock analysis."""
+
+    def _base_analysis_kwargs(self, **overrides):
+        """Build a reusable stock analysis payload for tests."""
+        data = {
+            "ticker": "AAPL",
+            "current_price": 90.0,
+            "ma_alltime": 92.0,
+            "ma200": 100.0,
+            "ma_last_30_days": 94.0,
+            "ma_last_quarter": 96.0,
+            "week52_high": 120.0,
+            "week52_low": 80.0,
+            "week52_avg": 95.0,
+            "forecast_high": 120.0,
+            "forecast_low": 95.0,
+            "forecast_avg": 105.0,
+            "min_upside_threshold": 8.0,
+            "min_drop_from_52week_threshold": 8.0,
+        }
+        data.update(overrides)
+        return data
     
     def test_analyze_stock_with_alert(self):
         """Test stock analysis that triggers an alert."""
         result = analyze_stock(
-            ticker="AAPL",
-            current_price=90.0,
-            ma_alltime=92.0,
-            ma200=100.0,
-            ma_last_30_days=94.0,
-            ma_last_quarter=96.0,
-            min_upside_threshold=8.0
+            **self._base_analysis_kwargs(forecast_avg=98.0)
         )
         
         # Verify structure
@@ -163,17 +178,30 @@ class TestStockAnalysis(unittest.TestCase):
         self.assertEqual(result["current_price"], 90.0)
         self.assertTrue(result["alert_triggered"])
         self.assertEqual(result["alert_level"], "good_opportunity")
+
+    def test_analyze_stock_no_alert_when_forecast_missing_threshold(self):
+        """Test no alert when MA200 is met but forecast upside is too small."""
+        result = analyze_stock(
+            **self._base_analysis_kwargs(forecast_avg=92.0)
+        )
+
+        self.assertFalse(result["alert_triggered"])
+        self.assertEqual(result["alert_level"], "no_alert")
     
     def test_analyze_stock_no_alert(self):
         """Test stock analysis with no alert."""
         result = analyze_stock(
-            ticker="MSFT",
-            current_price=110.0,
-            ma_alltime=108.0,
-            ma200=100.0,
-            ma_last_30_days=107.0,
-            ma_last_quarter=109.0,
-            min_upside_threshold=8.0
+            **self._base_analysis_kwargs(
+                ticker="MSFT",
+                current_price=110.0,
+                ma_alltime=108.0,
+                ma200=100.0,
+                ma_last_30_days=107.0,
+                ma_last_quarter=109.0,
+                forecast_avg=108.0,
+                forecast_low=104.0,
+                forecast_high=112.0,
+            )
         )
         
         self.assertFalse(result["alert_triggered"])
@@ -182,29 +210,35 @@ class TestStockAnalysis(unittest.TestCase):
     def test_analyze_stock_deep_discount(self):
         """Test stock analysis with deep discount."""
         result = analyze_stock(
-            ticker="GOOGL",
-            current_price=80.0,
-            ma_alltime=85.0,
-            ma200=100.0,
-            ma_last_30_days=88.0,
-            ma_last_quarter=89.0,
-            min_upside_threshold=8.0
+            **self._base_analysis_kwargs(
+                ticker="GOOGL",
+                current_price=80.0,
+                ma_alltime=85.0,
+                ma200=100.0,
+                ma_last_30_days=88.0,
+                ma_last_quarter=89.0,
+                forecast_avg=90.0,
+            )
         )
         
         self.assertTrue(result["alert_triggered"])
-        self.assertEqual(result["alert_level"], "investigate_carefully")
+        self.assertEqual(result["alert_level"], "deep_discount")
         self.assertAlmostEqual(result["upside_to_ma200"], 25.0, places=1)
     
     def test_analyze_stock_rounding(self):
         """Test that prices are properly rounded."""
         result = analyze_stock(
-            ticker="TSLA",
-            current_price=100.123456,
-            ma_alltime=180.234567,
-            ma200=200.987654,
-            ma_last_30_days=140.555555,
-            ma_last_quarter=120.111111,
-            min_upside_threshold=8.0
+            **self._base_analysis_kwargs(
+                ticker="TSLA",
+                current_price=100.123456,
+                ma_alltime=180.234567,
+                ma200=200.987654,
+                ma_last_30_days=140.555555,
+                ma_last_quarter=120.111111,
+                forecast_avg=120.222222,
+                forecast_low=110.333333,
+                forecast_high=130.444444,
+            )
         )
         
         # Verify rounding to 2 decimal places

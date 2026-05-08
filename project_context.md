@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Stock Dip Alert System identifies buying opportunities by monitoring when quality stocks temporarily trade below their historical average prices. The system specifically looks for situations where the upside to return to the stock's 200-day moving average is at least 8%.
+The Stock Dip Alert System identifies buying opportunities by monitoring when quality stocks temporarily trade below their historical average prices. The system specifically looks for situations where the stock is below its 200-day moving average and the analyst forecast average still shows at least 8% upside.
 
 ## Core Trading Principles
 
@@ -60,7 +60,7 @@ If a stock is trading at $100 and its MA200 is $108:
 An alert is triggered when **BOTH** conditions are true:
 
 1. ✅ Current price is **below** MA200
-2. ✅ Upside to MA200 is **>= 8%**
+2. ✅ Upside to the forecast average is **>= 8%**
 
 ### What Triggers Each Alert Level
 
@@ -85,7 +85,7 @@ Each alert email includes:
 - **Alert Level**: Visual emoji and classification
 - **Current Price**: What the stock is trading at now
 - **MA200 Value**: The 200-day average for reference
-- **Upside to MA200**: The key metric (8%, 12%, etc.)
+- **Upside to forecast average**: The key metric (8%, 12%, etc.)
 - **1-Year Average**: For historical context
 - **3-Month Average**: For shorter-term context
 - **All Upside %s**: To each reference point
@@ -99,11 +99,11 @@ MA200: $110
 1-Year Average: $105
 3-Month Average: $98
 
-Upside to MA200: 15.79% ← KEY METRIC
+Upside to forecast average: 15.79% ← KEY METRIC
 Alert Level: Deep Discount (12-20% upside)
 ```
 
-This means: "If the stock returns to its 200-day average, it could provide 15.79% upside."
+This means: "If the stock remains below MA200 and the forecast average still implies enough upside, it could provide 15.79% upside."
 
 ## Technical Implementation
 
@@ -175,7 +175,7 @@ The system flags all of them. This prevents missing exceptional opportunities wh
 
 ### Simplicity
 
-- One condition to watch (8% upside to MA200)
+- One condition to watch (8% upside to forecast average)
 - Easy to understand and explain
 - No complex multi-factor scoring
 

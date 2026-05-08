@@ -4,7 +4,7 @@ A production-quality Python script that monitors a trusted stock watchlist and s
 
 ## Purpose
 
-This tool helps you identify buying opportunities by automatically scanning your watchlist for stocks trading below their technical averages. Alerts are triggered when the upside potential to return to the 200-day moving average is at least 8%.
+This tool helps you identify buying opportunities by automatically scanning your watchlist for stocks trading below their technical averages. Alerts are triggered when the stock is below its 200-day moving average and the forecast average still offers at least 8% upside.
 
 ## Features
 
@@ -177,7 +177,7 @@ This tool requires a Gmail app-specific password (not your regular password):
    - Upside percentages to each average
 4. **Check Conditions**:
    - Is current price below MA200?
-   - Is upside to MA200 >= 8%?
+   - Is upside to the forecast average >= 8%?
 5. **Classify Alert**: Assigns level based on upside potential
 6. **Send Email**: Dispatches alert with full analysis if conditions met
 
